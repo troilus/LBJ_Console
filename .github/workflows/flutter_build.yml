@@ -1,9 +1,13 @@
 name: Flutter Build
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0.0)'
+        required: true
+        type: string
+        default: 'v1.0.0'
 
 jobs:
   build:
@@ -39,16 +43,17 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
 
-      - name: Rename APK with tag
+      - name: Rename APK with version
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          cp build/app/outputs/flutter-apk/app-release.apk LBJ_Console_${TAG_NAME}_android_release.apk
+          VERSION=${{ inputs.version }}
+          cp build/app/outputs/flutter-apk/app-release.apk LBJ_Console_${VERSION}_android_release.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            LBJ_Console_${{ github.ref_name }}_android_release.apk
-          name: ${{ github.ref_name }}
+            LBJ_Console_${{ inputs.version }}_android_release.apk
+          name: ${{ inputs.version }}
           draft: false
           prerelease: false
+          generate_release_notes: true
