@@ -57,7 +57,12 @@ class _WaterfallCache {
 }
 
 class AudioWaterfallWidget extends StatefulWidget {
-  const AudioWaterfallWidget({super.key});
+  final Stream<String>? rawDataStream;
+
+  const AudioWaterfallWidget({
+    super.key,
+    this.rawDataStream,
+  });
 
   @override
   State<AudioWaterfallWidget> createState() => _AudioWaterfallWidgetState();
@@ -69,21 +74,40 @@ class _AudioWaterfallWidgetState extends State<AudioWaterfallWidget> {
   final _cache = _WaterfallCache.instance;
   ui.Image? _waterfallImage;
   List<double> _currentSpectrum = [];
+  List<String> _rawDataHistory = [];
 
   Timer? _updateTimer;
   bool _imageNeedsUpdate = false;
+  StreamSubscription<String>? _rawDataSubscription;
 
   @override
   void initState() {
     super.initState();
     _cache.initialize();
     _startUpdating();
+    _listenToRawData();
+  }
+
+  void _listenToRawData() {
+    if (widget.rawDataStream != null) {
+      _rawDataSubscription = widget.rawDataStream!.listen((rawData) {
+        if (mounted) {
+          setState(() {
+            _rawDataHistory.add(rawData);
+            if (_rawDataHistory.length > 10) {
+              _rawDataHistory.removeAt(0);
+            }
+          });
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _updateTimer?.cancel();
     _waterfallImage?.dispose();
+    _rawDataSubscription?.cancel();
     super.dispose();
   }
 
@@ -142,42 +166,88 @@ class _AudioWaterfallWidgetState extends State<AudioWaterfallWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
       children: [
-        Container(
-          height: 80,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            border: Border(
-              left: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
-              right: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
-              top: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 80,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border(
+                  left: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+                  right: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+                  top: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+                ),
+              ),
+              child: _currentSpectrum.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: Colors.cyan, strokeWidth: 2))
+                  : CustomPaint(painter: _SpectrumPainter(_currentSpectrum)),
+            ),
+            Container(
+              height: 100,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border(
+                  left: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+                  right: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+                  bottom: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
+                ),
+              ),
+              child: _waterfallImage == null
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.cyan))
+                  : CustomPaint(painter: _WaterfallImagePainter(_waterfallImage!)),
+            ),
+          ],
+        ),
+        if (_rawDataHistory.isNotEmpty)
+          Positioned(
+            right: 10,
+            top: 10,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 250, maxHeight: 150),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.85),
+                border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '原始数据:',
+                      style: TextStyle(
+                        color: Colors.cyan,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ..._rawDataHistory.map((data) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            data,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 9,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
             ),
           ),
-          child: _currentSpectrum.isEmpty
-              ? const Center(
-                  child: CircularProgressIndicator(
-                      color: Colors.cyan, strokeWidth: 2))
-              : CustomPaint(painter: _SpectrumPainter(_currentSpectrum)),
-        ),
-        Container(
-          height: 100,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            border: Border(
-              left: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
-              right: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
-              bottom: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 2),
-            ),
-          ),
-          child: _waterfallImage == null
-              ? const Center(
-                  child: CircularProgressIndicator(color: Colors.cyan))
-              : CustomPaint(painter: _WaterfallImagePainter(_waterfallImage!)),
-        ),
       ],
     );
   }

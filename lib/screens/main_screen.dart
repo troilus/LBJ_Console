@@ -841,7 +841,9 @@ class _PixelPerfectBluetoothDialogState
   Widget _buildAudioInputView(BuildContext context) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       const SizedBox(height: 8),
-      const AudioWaterfallWidget(),
+      AudioWaterfallWidget(
+        rawDataStream: AudioInputService().rawDataStream,
+      ),
     ]);
   }
 

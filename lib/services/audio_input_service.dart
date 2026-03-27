@@ -206,11 +206,14 @@ class AudioInputService {
       StreamController<bool>.broadcast();
   final StreamController<DateTime?> _lastReceivedTimeController =
       StreamController<DateTime?>.broadcast();
+  final StreamController<String> _rawDataController =
+      StreamController<String>.broadcast();
 
   Stream<String> get statusStream => _statusController.stream;
   Stream<TrainRecord> get dataStream => _dataController.stream;
   Stream<bool> get connectionStream => _connectionController.stream;
   Stream<DateTime?> get lastReceivedTimeStream => _lastReceivedTimeController.stream;
+  Stream<String> get rawDataStream => _rawDataController.stream;
 
   bool _isListening = false;
   DateTime? _lastReceivedTime;
@@ -269,6 +272,7 @@ class AudioInputService {
             _lastRawMessage = currentRawMessage;
 
             developer.log('Audio-RAW: $currentRawMessage', name: 'AudioInput');
+            _rawDataController.add(currentRawMessage);
 
             if (!_isListening) {
               _updateListeningState(true, "监听中");
@@ -347,5 +351,6 @@ class AudioInputService {
     _dataController.close();
     _connectionController.close();
     _lastReceivedTimeController.close();
+    _rawDataController.close();
   }
 }
